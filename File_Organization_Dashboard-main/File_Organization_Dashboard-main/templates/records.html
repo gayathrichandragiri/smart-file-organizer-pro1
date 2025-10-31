@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Organized File Records</title>
+</head>
+<body style="font-family: Arial; text-align:center; margin-top: 30px;">
+  <h2>📜 File Organizer Log</h2>
+  <table border="1" cellpadding="8" style="margin: 0 auto;">
+    <tr>
+      <th>ID</th>
+      <th>File Name</th>
+      <th>Type</th>
+      <th>New Path</th>
+      <th>Date</th>
+    </tr>
+    {% for f in files %}
+    <tr>
+      <td>{{ f[0] }}</td>
+      <td>{{ f[1] }}</td>
+      <td>{{ f[2] }}</td>
+      <td>{{ f[3] }}</td>
+      <td>{{ f[4] }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <br>
+  <a href="/dashboard"> Back to Dashboard</a>
+</body>
+</html>

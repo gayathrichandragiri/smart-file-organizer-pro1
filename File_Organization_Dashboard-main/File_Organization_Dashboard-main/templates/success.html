@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head><title>Organization Result</title></head>
+<body style="font-family: Arial; text-align:center; margin-top: 40px;">
+  <h2>{{ message }}</h2>
+
+  <h3>📊 Summary:</h3>
+  <table border="1" cellpadding="8" style="margin: 0 auto;">
+    <tr><th>Category</th><th>Files Organized</th></tr>
+    {% for cat, count in summary.items() %}
+      <tr><td>{{ cat }}</td><td>{{ count }}</td></tr>
+    {% endfor %}
+  </table>
+
+  <br>
+  <a href="/dashboard"> Back to Dashboard</a> |
+  <a href="/records">📜 View Records</a>
+</body>
+</html>

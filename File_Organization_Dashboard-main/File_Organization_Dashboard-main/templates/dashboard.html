@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Smart File Organizer - Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #121212; color: #e6eef8; }
+    .card { background: #1f2937; color: #e6eef8; }
+    .sidebar { background: #0f1724; min-height: 100vh; }
+    .table-responsive { max-height: 300px; overflow: auto; }
+  </style>
+</head>
+<body>
+  <div class="d-flex">
+    <div class="sidebar p-3" style="width:220px;">
+      <h4>Smart Organizer</h4>
+      <hr style="border-color:#334155;">
+      <ul class="nav flex-column">
+        <li class="nav-item"><a class="nav-link text-light" href="/dashboard">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link text-light" href="/records">Records</a></li>
+        <li class="nav-item"><a class="nav-link text-light" href="/">Home</a></li>
+      </ul>
+    </div>
+    <div class="flex-fill p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Dashboard</h3>
+        <div>
+          <button class="btn btn-light btn-sm" id="organizeBtn">Organize Now</button>
+        </div>
+        <div class="card p-3 mt-4">
+  <h6>Upload Files (for Render)</h6>
+  <form action="/upload" method="POST" enctype="multipart/form-data">
+    <input type="file" name="files" multiple class="form-control mb-2" required>
+    <button type="submit" class="btn btn-success btn-sm">Upload & Organize</button>
+  </form>
+</div>
+
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card p-3">
+            <h6>Total Files</h6>
+            <h2 id="totalFiles">0</h2>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card p-3">
+            <h6>Last Folder</h6>
+            <p id="lastFolder">-</p>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card p-3">
+            <h6>PDF Reports</h6>
+            <p id="pdfCount">0</p>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card p-3">
+            <h6>Last Run</h6>
+            <p id="lastRun">-</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <div class="card p-3">
+            <h6>Files by Type</h6>
+            <canvas id="barChart"></canvas>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card p-3">
+            <h6>Files Over Time</h6>
+            <canvas id="lineChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-3">
+        <h6>Activity Log</h6>
+        <div class="table-responsive">
+          <table class="table table-dark table-striped">
+            <thead>
+              <tr><th>ID</th><th>File</th><th>Type</th><th>Path</th><th>Date</th></tr>
+            </thead>
+            <tbody id="logBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  
+  <div class="modal" tabindex="-1" id="organizeModal">
+    <div class="modal-dialog">
+      <div class="modal-content" style="background:#0b1220; color:#e6eef8;">
+        <div class="modal-header">
+          <h5 class="modal-title">Organize Folder</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Enter absolute folder path to organize:</p>
+          <input type="text" id="folderPath" class="form-control" placeholder="e.g. C:\\Users\\you\\Downloads">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="confirmOrganize">Organize</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const barCtx = document.getElementById('barChart').getContext('2d');
+  const lineCtx = document.getElementById('lineChart').getContext('2d');
+  let barChart, lineChart;
+
+  async function fetchSummary() {
+    const res = await fetch('/api/summary');
+    return res.json();
+  }
+
+  async function fetchChartData() {
+    const res = await fetch('/api/chartdata');
+    return res.json();
+  }
+
+  async function fetchLogs() {
+    const res = await fetch('/records');
+    const html = await res.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const rows = doc.querySelectorAll('table tbody tr');
+    return Array.from(rows).map(r => Array.from(r.children).map(c => c.textContent));
+  }
+
+  async function updateDashboard() {
+    const summary = await fetchSummary();
+    const chartData = await fetchChartData();
+    const logs = await fetchLogs();
+
+    const total = Object.values(summary).reduce((a,b)=>a+b,0);
+    document.getElementById('totalFiles').innerText = total;
+    document.getElementById('pdfCount').innerText = '—';
+    document.getElementById('lastRun').innerText = new Date().toLocaleString();
+    document.getElementById('lastFolder').innerText = 'Last organized folder';
+
+    const labels = ['images','documents','videos','audio','archives','others'];
+    const data = labels.map(l => summary[l] || 0);
+
+    if (barChart) barChart.destroy();
+    barChart = new Chart(barCtx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{ label: 'Files', data, backgroundColor: '#3b82f6' }]
+      },
+      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero:true } } }
+    });
+
+    if (lineChart) lineChart.destroy();
+    lineChart = new Chart(lineCtx, {
+      type: 'line',
+      data: {
+        labels: chartData.labels || [],
+        datasets: [{ label: 'Files Over Time', data: chartData.counts || [], borderColor:'#60a5fa', fill:false }]
+      },
+      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero:true } } }
+    });
+
+    const tbody = document.getElementById('logBody');
+    tbody.innerHTML = '';
+    logs.slice(0,50).forEach(r => {
+      const tr = document.createElement('tr');
+      r.forEach(cell => {
+        const td = document.createElement('td');
+        td.textContent = cell;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  document.getElementById('organizeBtn').addEventListener('click', ()=> {
+    var modal = new bootstrap.Modal(document.getElementById('organizeModal'));
+    modal.show();
+  });
+
+  document.getElementById('confirmOrganize').addEventListener('click', async ()=> {
+    const path = document.getElementById('folderPath').value.trim();
+    if (!path) return alert('Enter a folder path.');
+
+    try {
+      const res = await fetch('/organize', { 
+        method:'POST', 
+        headers: {'Content-Type':'application/json'}, 
+        body: JSON.stringify({path}) 
+      });
+
+      const data = await res.json();
+
+      // ✅ close modal first
+      bootstrap.Modal.getInstance(document.getElementById('organizeModal')).hide();
+
+      // ✅ show result clearly
+      setTimeout(() => {
+        alert(data.message || 'Done');
+        updateDashboard();
+      }, 300);
+
+    } catch (err) {
+      alert('Error while organizing: ' + err);
+    }
+  });
+
+  updateDashboard();
+});
+</script>
+
+</body>
+</html>
