@@ -133,7 +133,7 @@ def organize_route():
 
     print("Received folder path:", dest_path)
 
-    result, summary = organize_files(dest_path)
+    result = organize_files(dest_path)
 
     # ✅ Always respond with JSON (for fetch API)
     if request.headers.get('Content-Type') == 'application/json':
@@ -195,6 +195,7 @@ if __name__ == "__main__":
     init_db()
     app.run(debug=True)
     #app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
 
 
 
